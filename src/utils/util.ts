@@ -5,17 +5,39 @@ export interface TsData {
 }
 
 export interface JobInfo {
-  job_details: string;
+  job_name: string;
   count: number;
   ts: TsData[];
-  avg_time?: number;
+  avg_time: number;
 }
 
 export interface JobScheduleInfo {
+  package_name: string | null;
   job_number: string | null;
   job_name: string | null;
   required_constraints: string | null;
   restrict_reason: string | null;
+}
+
+export interface PackageInfo {
+  package_name: string | null;
+  count: number;
+  jobs: JobScheduleInfo[];
+}
+
+export interface PackageDict {
+  [key: string]: {
+    jobs: JobScheduleInfo[];
+    count: number;
+  };
+}
+
+export interface JobHistoryInfo {
+  job_number: string;
+  job_name: string;
+  count: number;
+  ts: TsData[];
+  avg_time: number;
 }
 
 export interface ParsedLogsDict {
@@ -37,8 +59,10 @@ function parseTime(timeStr: string): number {
 }
 
 export function parseJobSchedule(log: string): JobScheduleInfo[] {
-  const match = log.match(/Registered \d+ jobs:(.+)/s);
-  const parsedLogs: JobScheduleInfo[] = [];
+  // const match = log.match(/Registered \d+ jobs:(.+)/s);
+  const match = log.match(/Registered \d+ jobs:(.+?)ConnectivityController:/s);
+  // const parsedLogs: JobScheduleInfo[] = [];
+  const packageLogs: PackageDict = {};
 
   if (match) {
     const jobLogs = match[1];
@@ -56,6 +80,8 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
       const restrictReasonMatch = jobInfo.match(/  Restricted due to: (.+)/);
 
       const jobName = jobNameMatch ? jobNameMatch[1].trim() : null;
+      const packageName = jobName ? jobName.split("/")[0] : null;
+      console.log(packageName);
       const requiredConstraints = requiredConstraintsMatch
         ? requiredConstraintsMatch[1].trim()
         : null;
@@ -63,19 +89,54 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
         ? restrictReasonMatch[1].trim()
         : null;
 
-      parsedLogs.push({
-        job_number: jobNumber,
-        job_name: jobName,
-        required_constraints: requiredConstraints,
-        restrict_reason: restrictReason,
-      });
+      // parsedLogs.push({
+      //   job_number: jobNumber,
+      //   package_name: packageName,
+      //   job_name: jobName,
+      //   required_constraints: requiredConstraints,
+      //   restrict_reason: restrictReason,
+      // });
+      if (packageName && !packageLogs[packageName]) {
+        // If the package_name is not present in the dictionary, add a new entry
+        packageLogs[packageName] = {
+          jobs: [
+            {
+              package_name: packageName,
+              job_number: jobNumber,
+              job_name: jobName,
+              required_constraints: requiredConstraints,
+              restrict_reason: restrictReason,
+            },
+          ],
+          count: 1,
+        };
+      } else if (packageName && packageLogs[packageName]) {
+        // If the package_name is already present, increment count
+        packageLogs[packageName].count++;
+        packageLogs[packageName].jobs.push({
+          package_name: packageName,
+          job_number: jobNumber,
+          job_name: jobName,
+          required_constraints: requiredConstraints,
+          restrict_reason: restrictReason,
+        });
+      }
+
+      // Push the current jobLog to the jobs array
     }
   }
+  const sortedArray = Object.entries(packageLogs);
+  sortedArray.sort((a, b) => b[1].count - a[1].count);
+  const sortedJobArray: JobScheduleInfo[] = sortedArray
+    .map((entry) => entry[1].jobs)
+    .flat();
 
-  return parsedLogs;
+  console.log("sorted array:");
+  console.log(sortedJobArray);
+  return sortedJobArray;
 }
 
-export function parseJobHistory(log: string): ParsedLogsDict {
+export function parseJobHistory(log: string): JobHistoryInfo[] {
   const startIdx = log.indexOf("Job history:");
   const endIdx = log.indexOf("Pending queue:");
 
@@ -85,11 +146,11 @@ export function parseJobHistory(log: string): ParsedLogsDict {
 
   for (const line of lines) {
     const match = line.match(
-      /-([\dms]+)\s+(START(?:-P)?|STOP(?:-P)?): (#\S+)\s+(.+)/
+      /-([\dms]+)\s+(START(?:-P)?|STOP(?:-P)?): (#\S+)\s+(.+?)(?:\s+(.+))?$/
     );
 
     if (match) {
-      const [, time, action, jobId, jobDetails] = match;
+      const [, time, action, jobId, jobName, finishInfo] = match;
       const ids: string[] = [];
 
       ids.push(jobId);
@@ -97,9 +158,10 @@ export function parseJobHistory(log: string): ParsedLogsDict {
       if (action.includes("START")) {
         if (!parsedLogsDict[jobId]) {
           parsedLogsDict[jobId] = {
-            job_details: jobDetails.trim(),
+            job_name: jobName.trim(),
             count: 1,
             ts: [{ start_time: time }],
+            avg_time: 0,
           };
         } else {
           parsedLogsDict[jobId].count += 1;
@@ -116,9 +178,9 @@ export function parseJobHistory(log: string): ParsedLogsDict {
         ].exec_time = parseTime(startTime) - parseTime(time);
       }
 
-      console.log(`index ${line} registered`);
+      // console.log(`index ${line} registered`);
     } else {
-      console.log(`${line} not matched!`);
+      // console.log(`${line} not matched!`);
     }
   }
 
@@ -130,7 +192,17 @@ export function parseJobHistory(log: string): ParsedLogsDict {
     parsedLogsDict[key].avg_time = execTimeAvg;
   }
 
-  return parsedLogsDict;
+  const sortedArray: JobHistoryInfo[] = Object.entries(parsedLogsDict)
+    .map((entry) => ({
+      job_number: entry[0],
+      job_name: entry[1].job_name,
+      count: entry[1].count,
+      ts: entry[1].ts,
+      avg_time: entry[1].avg_time,
+    }))
+    .sort((a, b) => a.avg_time - b.avg_time);
+
+  return sortedArray;
 }
 
 export const readFileContent = (file: File): Promise<string> => {
