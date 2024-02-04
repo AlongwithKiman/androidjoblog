@@ -15,7 +15,7 @@ import ButtonGroup from "@mui/material/ButtonGroup";
 
 const MainPage = () => {
   const [jobScheduleInfo, setJobScheduleInfo] = useState<JobScheduleInfo[]>([]);
-  const [jobHistoryInfo, setJobHistoryInfo] = useState<JobHistoryInfo[]>([]);
+  const [jobHistoryInfo, setJobHistoryInfo] = useState<JobInfo[]>([]);
 
   const buttons = ["Registered Job", "Job History"];
   const [clickedButton, setClickedButton] = useState<string | null>(
@@ -64,23 +64,28 @@ const MainPage = () => {
     { field: "restrict_reason", headerName: "Restrict Reason", width: 150 },
   ];
 
+  // export interface JobInfo {
+  //   job_name: string;
+  //   count: number;
+  //   avg_time: number;
+  //   jobs: OneJobInfo[];
+  // }
   const historyInfoRows: GridRowsProp = jobHistoryInfo.map((job) => ({
-    id: job.job_number,
-    job_number: job.job_number || "",
+    id: job.job_name,
     job_name: job.job_name || "",
     count: job.count,
     avg_time: job.avg_time,
   }));
 
   const historyInfoColumns: GridColDef[] = [
-    { field: "job_number", headerName: "Job #", width: 150 },
+    { field: "jobs", headerName: "jobs", width: 150 },
     { field: "job_name", headerName: "Job Name", width: 500 },
     {
       field: "count",
       headerName: "Count",
       width: 300,
     },
-    { field: "avg_time", headerName: "Avg time", width: 150 },
+    { field: "avg_time", headerName: "Avg time(ms)", width: 150 },
   ];
 
   return (

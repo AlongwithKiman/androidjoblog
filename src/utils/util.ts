@@ -4,13 +4,6 @@ export interface TsData {
   exec_time?: number;
 }
 
-export interface JobInfo {
-  job_name: string;
-  count: number;
-  ts: TsData[];
-  avg_time: number;
-}
-
 export interface JobScheduleInfo {
   package_name: string | null;
   job_number: string | null;
@@ -40,7 +33,22 @@ export interface JobHistoryInfo {
   avg_time: number;
 }
 
+export interface OneJobInfo {
+  job_id: string;
+  start_time: string;
+  end_time: string;
+  exec_time: number;
+  terminate_status: string;
+}
+export interface JobInfo {
+  job_name: string;
+  count: number;
+  avg_time: number;
+  jobs: OneJobInfo[];
+}
+
 export interface ParsedLogsDict {
+  //key: job name
   [key: string]: JobInfo;
 }
 
@@ -136,7 +144,7 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
   return sortedJobArray;
 }
 
-export function parseJobHistory(log: string): JobHistoryInfo[] {
+export function parseJobHistory(log: string): JobInfo[] {
   const startIdx = log.indexOf("Job history:");
   const endIdx = log.indexOf("Pending queue:");
 
@@ -151,56 +159,98 @@ export function parseJobHistory(log: string): JobHistoryInfo[] {
 
     if (match) {
       const [, time, action, jobId, jobName, finishInfo] = match;
-      const ids: string[] = [];
+      const jobNames: string[] = [];
 
-      ids.push(jobId);
+      jobNames.push(jobName);
 
+      // export interface JobInfo {
+      //   job_name: string;
+      //   count: number;
+      //   avg_time: number;
+      //   jobs: OneJobInfo[];
+      // }
+
+      // export interface ParsedLogsDict {
+      //   //key: job name
+      //   [key: string]: JobInfo;
+      // }
+      // export interface OneJobInfo {
+      //   job_id: string;
+      //   start_time: number;
+      //   end_time: number;
+      //   exec_time: number;
+      //   terminate_status: string;
+      // }
       if (action.includes("START")) {
-        if (!parsedLogsDict[jobId]) {
-          parsedLogsDict[jobId] = {
+        // 아예 처음 jobName
+        if (!parsedLogsDict[jobName]) {
+          parsedLogsDict[jobName] = {
             job_name: jobName.trim(),
             count: 1,
-            ts: [{ start_time: time }],
             avg_time: 0,
+            jobs: [
+              {
+                job_id: jobId,
+                start_time: time,
+                end_time: "",
+                exec_time: 0,
+                terminate_status: "",
+              },
+            ],
           };
         } else {
-          parsedLogsDict[jobId].count += 1;
-          parsedLogsDict[jobId].ts.push({ start_time: time });
+          parsedLogsDict[jobName].count += 1;
+          parsedLogsDict[jobName].jobs.push({
+            job_id: jobId,
+            start_time: time,
+            end_time: "",
+            exec_time: 0,
+            terminate_status: "",
+          });
         }
       } else if (action.includes("STOP")) {
-        parsedLogsDict[jobId].ts[parsedLogsDict[jobId].ts.length - 1].end_time =
-          time;
-        const startTime =
-          parsedLogsDict[jobId].ts[parsedLogsDict[jobId].ts.length - 1]
-            .start_time;
-        parsedLogsDict[jobId].ts[
-          parsedLogsDict[jobId].ts.length - 1
-        ].exec_time = parseTime(startTime) - parseTime(time);
+        // 채워지지 않은, job_id가 매칭되는 정보가 jobs[]에 존재 -> 채워야 함
+        const jobInfo = parsedLogsDict[jobName];
+        if (jobInfo && jobInfo.jobs) {
+          jobInfo.jobs.forEach((job, index) => {
+            if (job.job_id === jobId && job.end_time === "") {
+              parsedLogsDict[jobName].jobs[index].end_time = time;
+              const startTime = parsedLogsDict[jobName].jobs[index].start_time;
+              parsedLogsDict[jobName].jobs[index].exec_time =
+                parseTime(startTime) - parseTime(time);
+            }
+          });
+        } else {
+          console.log(`error: job ${jobId} hasn't started`);
+        }
       }
-
-      // console.log(`index ${line} registered`);
     } else {
-      // console.log(`${line} not matched!`);
+      console.log(`${line} not matched!`);
     }
   }
 
   for (const key in parsedLogsDict) {
     const info = parsedLogsDict[key];
     const execTimeAvg = Math.floor(
-      info.ts.reduce((sum, ts) => sum + (ts.exec_time || 0), 0) / info.ts.length
+      info.jobs.reduce((sum, job) => sum + (job.exec_time || 0), 0) / info.count
     );
     parsedLogsDict[key].avg_time = execTimeAvg;
   }
 
-  const sortedArray: JobHistoryInfo[] = Object.entries(parsedLogsDict)
+  // export interface JobInfo {
+  //   job_name: string;
+  //   count: number;
+  //   avg_time: number;
+  //   jobs: OneJobInfo[];
+  // }
+  const sortedArray: JobInfo[] = Object.entries(parsedLogsDict)
     .map((entry) => ({
-      job_number: entry[0],
-      job_name: entry[1].job_name,
+      job_name: entry[0],
       count: entry[1].count,
-      ts: entry[1].ts,
+      jobs: entry[1].jobs,
       avg_time: entry[1].avg_time,
     }))
-    .sort((a, b) => a.avg_time - b.avg_time);
+    .sort((a, b) => b.avg_time - a.avg_time);
 
   return sortedArray;
 }
