@@ -1,4 +1,6 @@
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
 import {
   JobHistoryInfo,
   JobInfo,
@@ -18,10 +20,19 @@ import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import { useNavigate } from "react-router-dom";
+import { fetchLog, selectLog } from "../store/slices/log/log";
 
 const MainPage = () => {
   const [jobScheduleInfo, setJobScheduleInfo] = useState<JobScheduleInfo[]>([]);
   const [jobHistoryInfo, setJobHistoryInfo] = useState<JobInfo[]>([]);
+  const logState = useSelector(selectLog);
+
+  useEffect(() => {
+    setJobScheduleInfo(logState.jobScheduleInfo);
+  }, [logState.jobScheduleInfo]);
+  useEffect(() => {
+    setJobHistoryInfo(logState.jobHistoryInfo);
+  }, [logState.jobHistoryInfo]);
 
   const buttons = ["Registered Job", "Job History"];
   const [clickedButton, setClickedButton] = useState<string | null>(
@@ -32,22 +43,25 @@ const MainPage = () => {
     setClickedButton(buttonName);
   };
 
-  const onClickUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const onClickUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  const dispatch = useDispatch();
+
+  const onFileInputChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const fileInput = event.target;
     if (fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
-      try {
-        const fileContent = await readFileContent(file);
-        const jobScheduleInfo = parseJobSchedule(fileContent);
-        const jobHistoryInfo = parseJobHistory(fileContent);
-        setJobScheduleInfo(jobScheduleInfo);
-        setJobHistoryInfo(jobHistoryInfo);
-      } catch (error) {
-        console.error("파일 읽기 오류:", error);
-      }
+      // Dispatch the fetchLog action
+      dispatch(fetchLog(file) as any);
     }
   };
-
   const navigate = useNavigate();
   const onClickHistoryRow: GridEventListener<"rowClick"> = (
     params, // GridRowParams
@@ -107,9 +121,6 @@ const MainPage = () => {
 
   return (
     <>
-      <div>
-        <input type="file" onChange={onClickUpload}></input>
-      </div>
       <ButtonGroup
         style={{
           display: "flex",
@@ -123,9 +134,6 @@ const MainPage = () => {
             variant="contained"
             onClick={() => onClickButton(button)}
             color={clickedButton === button ? "secondary" : "primary"}
-            // style={{
-            //   backgroundColor: clickedButton === button ? "#1976D2" : "#606060", // Change this color to your desired darker color
-            // }}
           >
             {button}
           </Button>
@@ -148,6 +156,17 @@ const MainPage = () => {
       ) : (
         <div>TODO</div>
       )}
+      <div>
+        <input
+          type="file"
+          onChange={onFileInputChange}
+          ref={fileInputRef}
+          style={{ display: "none" }}
+        />
+        <Button variant="contained" component="span" onClick={onClickUpload}>
+          Upload File
+        </Button>
+      </div>
     </>
   );
 };

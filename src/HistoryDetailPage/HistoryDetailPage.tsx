@@ -1,18 +1,24 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
+import Button from "@mui/material/Button";
 import { OneJobInfo, JobInfo } from "../utils/util";
 
 const HistoryDetailPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const historyObject: JobInfo = location.state?.historyObject || null;
 
   if (!historyObject) {
     return <div>Error: History Object not found</div>;
   }
+
+  const goBackToMainPage = () => {
+    navigate("/");
+  };
 
   return (
     <div style={{ padding: 16 }}>
@@ -28,12 +34,12 @@ const HistoryDetailPage = () => {
             style={{
               padding: 16,
               whiteSpace: "pre-line",
-              minHeight: "300px",
-              maxHeight: "300px",
+              minHeight: "400px",
+              maxHeight: "400px",
               overflowY: "auto",
             }}
           >
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               Basic Information
             </Typography>
             <Typography>
@@ -57,11 +63,11 @@ const HistoryDetailPage = () => {
             style={{
               padding: 16,
               overflowX: "auto",
-              minHeight: "200px",
+              minHeight: "400px",
               maxHeight: "400px",
             }}
           >
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               Job Details
             </Typography>
             {historyObject.jobs.map((job: OneJobInfo) => (
@@ -87,6 +93,16 @@ const HistoryDetailPage = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Go Back Button */}
+      <Button
+        variant="contained"
+        color="primary"
+        style={{ marginTop: 16 }}
+        onClick={goBackToMainPage}
+      >
+        Go Back
+      </Button>
     </div>
   );
 };
