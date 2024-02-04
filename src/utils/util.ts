@@ -99,7 +99,6 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
         : null;
 
       if (packageName && !packageLogs[packageName]) {
-        // If the package_name is not present in the dictionary, add a new entry
         packageLogs[packageName] = {
           jobs: [
             {
@@ -113,7 +112,6 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
           count: 1,
         };
       } else if (packageName && packageLogs[packageName]) {
-        // If the package_name is already present, increment count
         packageLogs[packageName].count++;
         packageLogs[packageName].jobs.push({
           package_name: packageName,
@@ -123,8 +121,6 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
           restrict_reason: restrictReason,
         });
       }
-
-      // Push the current jobLog to the jobs array
     }
   }
   const sortedArray = Object.entries(packageLogs);
@@ -158,7 +154,7 @@ export function parseJobHistory(log: string): JobInfo[] {
       jobNames.push(jobName);
 
       if (action.includes("START")) {
-        // 아예 처음 jobName
+        // If new job name encountered
         if (!parsedLogsDict[jobName]) {
           parsedLogsDict[jobName] = {
             job_name: jobName.trim(),
@@ -186,7 +182,7 @@ export function parseJobHistory(log: string): JobInfo[] {
           });
         }
       } else if (action.includes("STOP")) {
-        // 채워지지 않은, job_id가 매칭되는 정보가 jobs[]에 존재 -> end time, exec time, terminate status 채워야 함
+        // calculate end time, exec time, terminate status
         const jobInfo = parsedLogsDict[jobName];
         if (jobInfo && jobInfo.jobs) {
           jobInfo.jobs.forEach((job, index) => {
@@ -208,8 +204,6 @@ export function parseJobHistory(log: string): JobInfo[] {
       console.log(`${line} not matched!`);
     }
   }
-
-  // Post Process
 
   // Calculate Exec Time
   for (const key in parsedLogsDict) {

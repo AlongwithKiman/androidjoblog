@@ -1,15 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-
-import {
-  JobHistoryInfo,
-  JobInfo,
-  JobScheduleInfo,
-  ParsedLogsDict,
-  parseJobHistory,
-  parseJobSchedule,
-  readFileContent,
-} from "../utils/util";
 import {
   DataGrid,
   GridRowsProp,
@@ -21,15 +11,20 @@ import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import { useNavigate } from "react-router-dom";
 import { fetchLog, selectLog } from "../store/slices/log/log";
+import { JobInfo, JobScheduleInfo } from "../utils/util";
 
 const MainPage = () => {
   const [jobScheduleInfo, setJobScheduleInfo] = useState<JobScheduleInfo[]>([]);
   const [jobHistoryInfo, setJobHistoryInfo] = useState<JobInfo[]>([]);
   const logState = useSelector(selectLog);
+  const dispatch = useDispatch();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setJobScheduleInfo(logState.jobScheduleInfo);
   }, [logState.jobScheduleInfo]);
+
   useEffect(() => {
     setJobHistoryInfo(logState.jobHistoryInfo);
   }, [logState.jobHistoryInfo]);
@@ -43,14 +38,11 @@ const MainPage = () => {
     setClickedButton(buttonName);
   };
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const onClickUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
-  const dispatch = useDispatch();
 
   const onFileInputChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -58,34 +50,55 @@ const MainPage = () => {
     const fileInput = event.target;
     if (fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
-      // Dispatch the fetchLog action
       dispatch(fetchLog(file) as any);
     }
   };
-  const navigate = useNavigate();
+
   const onClickHistoryRow: GridEventListener<"rowClick"> = (
-    params, // GridRowParams
-    event, // MuiEvent<React.MouseEvent<HTMLElement>>
-    details // GridCallbackDetails
+    params,
+    event,
+    details
   ) => {
     const selectedJob = params.row;
-
-    console.log("debug");
-    console.log(selectedJob);
     const historyObject = jobHistoryInfo.find(
       (element) => element.job_name === selectedJob.job_name
     );
     navigate("/detail", { state: { historyObject } });
   };
 
-  const scheduleInfoRows: GridRowsProp = jobScheduleInfo.map((job) => ({
-    id: job.job_number,
-    package_name: job.package_name || "",
-    job_number: job.job_number || "",
-    job_name: job.job_name || "",
-    required_constraints: job.required_constraints || "",
-    restrict_reason: job.restrict_reason || "",
-  }));
+  const renderDataGrid = () => {
+    const scheduleInfoRows: GridRowsProp = jobScheduleInfo.map((job) => ({
+      id: job.job_number,
+      package_name: job.package_name || "",
+      job_number: job.job_number || "",
+      job_name: job.job_name || "",
+      required_constraints: job.required_constraints || "",
+      restrict_reason: job.restrict_reason || "",
+    }));
+
+    const historyInfoRows: GridRowsProp = jobHistoryInfo.map((job) => ({
+      id: job.job_name,
+      job_name: job.job_name || "",
+      count: job.count,
+      avg_time: job.avg_time,
+      time_interval: job.time_interval,
+      jobs: job.jobs.map((job) => job.job_id),
+    }));
+    if (clickedButton === "Registered Job") {
+      return <DataGrid rows={scheduleInfoRows} columns={scheduleInfoColumns} />;
+    } else if (clickedButton === "Job History") {
+      return (
+        <DataGrid
+          rows={historyInfoRows}
+          columns={historyInfoColumns}
+          onRowClick={onClickHistoryRow}
+        />
+      );
+    } else {
+      return <div>Error</div>;
+    }
+  };
+
   const scheduleInfoColumns: GridColDef[] = [
     { field: "package_name", headerName: "Package", width: 150 },
     { field: "job_name", headerName: "Job Name", width: 500 },
@@ -98,22 +111,9 @@ const MainPage = () => {
     { field: "restrict_reason", headerName: "Restrict Reason", width: 150 },
   ];
 
-  const historyInfoRows: GridRowsProp = jobHistoryInfo.map((job) => ({
-    id: job.job_name,
-    job_name: job.job_name || "",
-    count: job.count,
-    avg_time: job.avg_time,
-    time_interval: job.time_interval,
-    jobs: job.jobs.map((job) => job.job_id),
-  }));
-
   const historyInfoColumns: GridColDef[] = [
     { field: "job_name", headerName: "Job Name", width: 700 },
-    {
-      field: "count",
-      headerName: "Count",
-      width: 100,
-    },
+    { field: "count", headerName: "Count", width: 100 },
     { field: "jobs", headerName: "job ids", width: 150 },
     { field: "avg_time", headerName: "Avg time(ms)", width: 150 },
     { field: "time_interval", headerName: "Time Interval(ms)", width: 150 },
@@ -126,6 +126,7 @@ const MainPage = () => {
           display: "flex",
           width: "300px",
           height: "50px",
+          margin: "16px",
         }}
       >
         {buttons.map((button) => (
@@ -141,22 +142,12 @@ const MainPage = () => {
       </ButtonGroup>
 
       <Divider />
-      {clickedButton === "Registered Job" ? (
-        <div style={{ height: 700, width: "100%" }}>
-          <DataGrid rows={scheduleInfoRows} columns={scheduleInfoColumns} />
-        </div>
-      ) : clickedButton === "Job History" ? (
-        <div style={{ height: 700, width: "100%" }}>
-          <DataGrid
-            rows={historyInfoRows}
-            columns={historyInfoColumns}
-            onRowClick={onClickHistoryRow}
-          />
-        </div>
-      ) : (
-        <div>TODO</div>
-      )}
-      <div>
+
+      <div style={{ height: "700px", width: "100%", padding: "16px" }}>
+        {renderDataGrid()}
+      </div>
+
+      <div style={{ margin: "16px" }}>
         <input
           type="file"
           onChange={onFileInputChange}

@@ -1,4 +1,3 @@
-// logSlice.ts
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../..";
 import {
@@ -41,13 +40,11 @@ export const logSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchLog.fulfilled, (state, action: PayloadAction<LogInfo>) => {
-        // Handle successful fetch
         state.jobScheduleInfo = action.payload.jobScheduleInfo;
         state.jobHistoryInfo = action.payload.jobHistoryInfo;
         // state.uploadedFile = action.payload.uploadedFile;
       })
       .addCase(fetchLog.rejected, (state, action) => {
-        // Handle fetch error
         console.error("Error fetching log:", action.error.message);
       });
   },
