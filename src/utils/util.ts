@@ -44,6 +44,7 @@ export interface JobInfo {
   job_name: string;
   count: number;
   avg_time: number;
+  time_interval: number[];
   jobs: OneJobInfo[];
 }
 
@@ -97,13 +98,6 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
         ? restrictReasonMatch[1].trim()
         : null;
 
-      // parsedLogs.push({
-      //   job_number: jobNumber,
-      //   package_name: packageName,
-      //   job_name: jobName,
-      //   required_constraints: requiredConstraints,
-      //   restrict_reason: restrictReason,
-      // });
       if (packageName && !packageLogs[packageName]) {
         // If the package_name is not present in the dictionary, add a new entry
         packageLogs[packageName] = {
@@ -158,29 +152,11 @@ export function parseJobHistory(log: string): JobInfo[] {
     );
 
     if (match) {
-      const [, time, action, jobId, jobName, finishInfo] = match;
+      const [, time, action, jobId, jobName, terminateStatus] = match;
       const jobNames: string[] = [];
 
       jobNames.push(jobName);
 
-      // export interface JobInfo {
-      //   job_name: string;
-      //   count: number;
-      //   avg_time: number;
-      //   jobs: OneJobInfo[];
-      // }
-
-      // export interface ParsedLogsDict {
-      //   //key: job name
-      //   [key: string]: JobInfo;
-      // }
-      // export interface OneJobInfo {
-      //   job_id: string;
-      //   start_time: number;
-      //   end_time: number;
-      //   exec_time: number;
-      //   terminate_status: string;
-      // }
       if (action.includes("START")) {
         // 아예 처음 jobName
         if (!parsedLogsDict[jobName]) {
@@ -188,6 +164,7 @@ export function parseJobHistory(log: string): JobInfo[] {
             job_name: jobName.trim(),
             count: 1,
             avg_time: 0,
+            time_interval: [],
             jobs: [
               {
                 job_id: jobId,
@@ -209,7 +186,7 @@ export function parseJobHistory(log: string): JobInfo[] {
           });
         }
       } else if (action.includes("STOP")) {
-        // 채워지지 않은, job_id가 매칭되는 정보가 jobs[]에 존재 -> 채워야 함
+        // 채워지지 않은, job_id가 매칭되는 정보가 jobs[]에 존재 -> end time, exec time, terminate status 채워야 함
         const jobInfo = parsedLogsDict[jobName];
         if (jobInfo && jobInfo.jobs) {
           jobInfo.jobs.forEach((job, index) => {
@@ -218,6 +195,9 @@ export function parseJobHistory(log: string): JobInfo[] {
               const startTime = parsedLogsDict[jobName].jobs[index].start_time;
               parsedLogsDict[jobName].jobs[index].exec_time =
                 parseTime(startTime) - parseTime(time);
+
+              parsedLogsDict[jobName].jobs[index].terminate_status =
+                terminateStatus;
             }
           });
         } else {
@@ -229,6 +209,9 @@ export function parseJobHistory(log: string): JobInfo[] {
     }
   }
 
+  // Post Process
+
+  // Calculate Exec Time
   for (const key in parsedLogsDict) {
     const info = parsedLogsDict[key];
     const execTimeAvg = Math.floor(
@@ -237,17 +220,26 @@ export function parseJobHistory(log: string): JobInfo[] {
     parsedLogsDict[key].avg_time = execTimeAvg;
   }
 
-  // export interface JobInfo {
-  //   job_name: string;
-  //   count: number;
-  //   avg_time: number;
-  //   jobs: OneJobInfo[];
-  // }
+  // Calculate Time Interval
+  for (const key in parsedLogsDict) {
+    const info = parsedLogsDict[key];
+    info.jobs.sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+    info.jobs.forEach((job, index) => {
+      if (index < info.jobs.length - 1) {
+        parsedLogsDict[key].time_interval.push(
+          parseTime(info.jobs[index + 1].start_time) -
+            parseTime(info.jobs[index].start_time)
+        );
+      }
+    });
+  }
+
   const sortedArray: JobInfo[] = Object.entries(parsedLogsDict)
     .map((entry) => ({
       job_name: entry[0],
       count: entry[1].count,
       jobs: entry[1].jobs,
+      time_interval: entry[1].time_interval,
       avg_time: entry[1].avg_time,
     }))
     .sort((a, b) => b.avg_time - a.avg_time);

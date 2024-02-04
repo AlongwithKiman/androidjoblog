@@ -5,6 +5,7 @@ import "./App.css";
 import MainPage from "./MainPage/MainPage";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import HistoryDetailPage from "./HistoryDetailPage/HistoryDetailPage";
 
 export const darkTheme = createTheme({
   palette: {
@@ -38,6 +39,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<MainPage />} />
+            <Route path="/detail" element={<HistoryDetailPage />} />
           </Routes>
         </BrowserRouter>
       </div>

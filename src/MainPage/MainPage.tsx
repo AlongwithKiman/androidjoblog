@@ -8,10 +8,16 @@ import {
   parseJobSchedule,
   readFileContent,
 } from "../utils/util";
-import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridRowsProp,
+  GridColDef,
+  GridEventListener,
+} from "@mui/x-data-grid";
 import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
+import { useNavigate } from "react-router-dom";
 
 const MainPage = () => {
   const [jobScheduleInfo, setJobScheduleInfo] = useState<JobScheduleInfo[]>([]);
@@ -36,12 +42,26 @@ const MainPage = () => {
         const jobHistoryInfo = parseJobHistory(fileContent);
         setJobScheduleInfo(jobScheduleInfo);
         setJobHistoryInfo(jobHistoryInfo);
-        console.log(jobScheduleInfo);
-        console.log(jobHistoryInfo);
       } catch (error) {
         console.error("파일 읽기 오류:", error);
       }
     }
+  };
+
+  const navigate = useNavigate();
+  const onClickHistoryRow: GridEventListener<"rowClick"> = (
+    params, // GridRowParams
+    event, // MuiEvent<React.MouseEvent<HTMLElement>>
+    details // GridCallbackDetails
+  ) => {
+    const selectedJob = params.row;
+
+    console.log("debug");
+    console.log(selectedJob);
+    const historyObject = jobHistoryInfo.find(
+      (element) => element.job_name === selectedJob.job_name
+    );
+    navigate("/detail", { state: { historyObject } });
   };
 
   const scheduleInfoRows: GridRowsProp = jobScheduleInfo.map((job) => ({
@@ -54,8 +74,8 @@ const MainPage = () => {
   }));
   const scheduleInfoColumns: GridColDef[] = [
     { field: "package_name", headerName: "Package", width: 150 },
-    { field: "job_number", headerName: "Job #", width: 150 },
     { field: "job_name", headerName: "Job Name", width: 500 },
+    { field: "job_number", headerName: "Job #", width: 150 },
     {
       field: "required_constraints",
       headerName: "Required Constraints",
@@ -64,28 +84,25 @@ const MainPage = () => {
     { field: "restrict_reason", headerName: "Restrict Reason", width: 150 },
   ];
 
-  // export interface JobInfo {
-  //   job_name: string;
-  //   count: number;
-  //   avg_time: number;
-  //   jobs: OneJobInfo[];
-  // }
   const historyInfoRows: GridRowsProp = jobHistoryInfo.map((job) => ({
     id: job.job_name,
     job_name: job.job_name || "",
     count: job.count,
     avg_time: job.avg_time,
+    time_interval: job.time_interval,
+    jobs: job.jobs.map((job) => job.job_id),
   }));
 
   const historyInfoColumns: GridColDef[] = [
-    { field: "jobs", headerName: "jobs", width: 150 },
-    { field: "job_name", headerName: "Job Name", width: 500 },
+    { field: "job_name", headerName: "Job Name", width: 700 },
     {
       field: "count",
       headerName: "Count",
-      width: 300,
+      width: 100,
     },
+    { field: "jobs", headerName: "job ids", width: 150 },
     { field: "avg_time", headerName: "Avg time(ms)", width: 150 },
+    { field: "time_interval", headerName: "Time Interval(ms)", width: 150 },
   ];
 
   return (
@@ -122,12 +139,15 @@ const MainPage = () => {
         </div>
       ) : clickedButton === "Job History" ? (
         <div style={{ height: 700, width: "100%" }}>
-          <DataGrid rows={historyInfoRows} columns={historyInfoColumns} />
+          <DataGrid
+            rows={historyInfoRows}
+            columns={historyInfoColumns}
+            onRowClick={onClickHistoryRow}
+          />
         </div>
       ) : (
         <div>TODO</div>
       )}
-      {clickedButton}
     </>
   );
 };
