@@ -54,13 +54,19 @@ export interface ParsedLogsDict {
 }
 
 function parseTime(timeStr: string): number {
-  const match = timeStr.match(/(?:(\d+)m)?(?:(\d+)s)?(?:(\d+)ms)?/);
+  const match = timeStr.match(/(-)?(?:(\d+)m)?(?:(\d+)s)?(?:(\d+)ms)?/);
   if (match) {
-    const [_, minutes, seconds, milliseconds] = match.map((x) =>
+    const sign = match[1] ? -1 : 1;
+    const [_, __, minutes, seconds, milliseconds] = match.map((x) =>
       x ? parseInt(x) : 0
     );
     const totalMilliseconds =
-      (minutes * 60 + seconds + milliseconds / 1000) * 1000;
+      sign *
+      (Math.abs(minutes) * 60 +
+        Math.abs(seconds) +
+        Math.abs(milliseconds) / 1000) *
+      1000;
+    console.log(totalMilliseconds);
     return totalMilliseconds;
   } else {
     throw new Error("Invalid time format");
@@ -144,7 +150,7 @@ export function parseJobHistory(log: string): JobInfo[] {
 
   for (const line of lines) {
     const match = line.match(
-      /-([\dms]+)\s+(START(?:-P)?|STOP(?:-P)?): (#\S+)\s+(.+?)(?:\s+(.+))?$/
+      /(-[\dms]+)\s+(START(?:-P)?|STOP(?:-P)?): (#\S+)\s+(.+?)(?:\s+(.+))?$/
     );
 
     if (match) {
@@ -190,7 +196,7 @@ export function parseJobHistory(log: string): JobInfo[] {
               parsedLogsDict[jobName].jobs[index].end_time = time;
               const startTime = parsedLogsDict[jobName].jobs[index].start_time;
               parsedLogsDict[jobName].jobs[index].exec_time =
-                parseTime(startTime) - parseTime(time);
+                parseTime(time) - parseTime(startTime);
 
               parsedLogsDict[jobName].jobs[index].terminate_status =
                 terminateStatus;
