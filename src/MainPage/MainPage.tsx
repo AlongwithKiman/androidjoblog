@@ -101,12 +101,12 @@ const MainPage = () => {
 
   const scheduleInfoColumns: GridColDef[] = [
     { field: "package_name", headerName: "Package", width: 150 },
-    { field: "job_name", headerName: "Job Name", width: 500 },
+    { field: "job_name", headerName: "Job Name", width: 700 },
     { field: "job_number", headerName: "Job #", width: 150 },
     {
       field: "required_constraints",
       headerName: "Required Constraints",
-      width: 300,
+      width: 550,
     },
     { field: "restrict_reason", headerName: "Restrict Reason", width: 150 },
   ];

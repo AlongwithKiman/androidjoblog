@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/androidjoblog/static/css/main.f855e6bc.css",
-    "main.js": "/androidjoblog/static/js/main.c8a4be90.js",
+    "main.js": "/androidjoblog/static/js/main.36374810.js",
     "static/js/787.19d23bd3.chunk.js": "/androidjoblog/static/js/787.19d23bd3.chunk.js",
     "index.html": "/androidjoblog/index.html",
     "main.f855e6bc.css.map": "/androidjoblog/static/css/main.f855e6bc.css.map",
-    "main.c8a4be90.js.map": "/androidjoblog/static/js/main.c8a4be90.js.map",
+    "main.36374810.js.map": "/androidjoblog/static/js/main.36374810.js.map",
     "787.19d23bd3.chunk.js.map": "/androidjoblog/static/js/787.19d23bd3.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.f855e6bc.css",
-    "static/js/main.c8a4be90.js"
+    "static/js/main.36374810.js"
   ]
 }
