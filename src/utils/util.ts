@@ -53,6 +53,12 @@ export interface ParsedLogsDict {
   [key: string]: JobInfo;
 }
 
+/**
+ * Parses the time string into milliseconds.
+ * @param timeStr - The time string in the format '(-)XmYsZms' where X is minutes, Y is seconds, and Z is milliseconds.
+ * @returns The time in milliseconds with sign.
+ * @throws Error if the time format is invalid.
+ */
 function parseTime(timeStr: string): number {
   const match = timeStr.match(/(-)?(?:(\d+)m)?(?:(\d+)s)?(?:(\d+)ms)?/);
   if (match) {
@@ -66,17 +72,19 @@ function parseTime(timeStr: string): number {
         Math.abs(seconds) +
         Math.abs(milliseconds) / 1000) *
       1000;
-    console.log(totalMilliseconds);
     return totalMilliseconds;
   } else {
     throw new Error("Invalid time format");
   }
 }
 
+/**
+ * Parses the job schedule log and extracts relevant information.
+ * @param log - The log string containing job schedule information.
+ * @returns An array of JobScheduleInfo objects sorted by package count.
+ */
 export function parseJobSchedule(log: string): JobScheduleInfo[] {
-  // const match = log.match(/Registered \d+ jobs:(.+)/s);
   const match = log.match(/Registered \d+ jobs:(.+?)ConnectivityController:/s);
-  // const parsedLogs: JobScheduleInfo[] = [];
   const packageLogs: PackageDict = {};
 
   if (match) {
@@ -96,7 +104,6 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
 
       const jobName = jobNameMatch ? jobNameMatch[1].trim() : null;
       const packageName = jobName ? jobName.split("/")[0] : null;
-      console.log(packageName);
       const requiredConstraints = requiredConstraintsMatch
         ? requiredConstraintsMatch[1].trim()
         : null;
@@ -135,11 +142,14 @@ export function parseJobSchedule(log: string): JobScheduleInfo[] {
     .map((entry) => entry[1].jobs)
     .flat();
 
-  console.log("sorted array:");
-  console.log(sortedJobArray);
   return sortedJobArray;
 }
 
+/**
+ * Parses the job history log and extracts relevant information.
+ * @param log - The log string containing job history information.
+ * @returns An array of JobInfo objects sorted by average execution time.
+ */
 export function parseJobHistory(log: string): JobInfo[] {
   const startIdx = log.indexOf("Job history:");
   const endIdx = log.indexOf("Pending queue:");
@@ -227,8 +237,10 @@ export function parseJobHistory(log: string): JobInfo[] {
     info.jobs.forEach((job, index) => {
       if (index < info.jobs.length - 1) {
         parsedLogsDict[key].time_interval.push(
-          parseTime(info.jobs[index + 1].start_time) -
-            parseTime(info.jobs[index].start_time)
+          Math.floor(
+            parseTime(info.jobs[index + 1].start_time) -
+              parseTime(info.jobs[index].start_time)
+          )
         );
       }
     });
@@ -247,6 +259,11 @@ export function parseJobHistory(log: string): JobInfo[] {
   return sortedArray;
 }
 
+/**
+ * Reads the content of a file asynchronously.
+ * @param file - The file to read.
+ * @returns A promise resolving to the content of the file as a string.
+ */
 export const readFileContent = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
